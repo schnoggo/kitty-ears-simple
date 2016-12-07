@@ -1,10 +1,5 @@
-// Circuit Playground Accelerometer Mouse Example
-// Tilt Circuit Playground left/right and up/down to move your mouse, and
-// press the left and right push buttons to click the mouse buttons!  Make sure
-// the slide switch is in the on (+) position to enable the mouse, or slide into
-// the off (-) position to disable it.  By default the sketch assumes you hold
-// Circuit Playground with the USB cable coming out the top.
-// Author: Tony DiCola
+// Circuit Playground Kitty Ears
+// Author: Lon Koenig
 // License: MIT License (https://opensource.org/licenses/MIT)
 #include <Adafruit_CircuitPlayground.h>
 #include <Wire.h>
@@ -12,32 +7,7 @@
 #include <Servo.h>
 
 
-
-// Configuration values to adjust the sensitivity and speed of the mouse.
-// X axis (left/right) configuration:
-#define XACCEL_MIN 0.1      // Minimum range of X axis acceleration, values below
-                            // this won't move the mouse at all.
-#define XACCEL_MAX 8.0      // Maximum range of X axis acceleration, values above
-                            // this will move the mouse as fast as possible.
-#define XMOUSE_RANGE 25.0   // Range of velocity for mouse movements.  The higher
-                            // this value the faster the mouse will move.
-#define XMOUSE_SCALE 1      // Scaling value to apply to mouse movement, this is
-                            // useful to set to -1 to flip the X axis movement.
-
-// Y axis (up/down) configuration:
-// Note that the meaning of these values is exactly the same as the X axis above,
-// just applied to the Y axis and up/down mouse movement.  You probably want to
-// keep these values the same as for the X axis (which is the default, they just
-// read the X axis values but you can override with custom values).
-#define YACCEL_MIN XACCEL_MIN
-#define YACCEL_MAX XACCEL_MAX
-#define YMOUSE_RANGE XMOUSE_RANGE
-#define YMOUSE_SCALE 1
-
-// Set this true to flip the mouse X/Y axis with the board X/Y axis (what you want
-// if holding with USB cable facing up).
-#define FLIP_AXES true
-
+#define G_BOUNCE_THRESHOLD .2
 
 // servo stuff
 #define left_servo_pin 10
@@ -46,7 +16,10 @@ Servo servoLeft;              // Define left servo
 Servo servoRight;             // Define right servo
 int angle = 0;
 
-
+float last_accel_reading_x = 0;
+float last_accel_reading_y = 0;
+int current_rotation_left_ear  = -99;
+int current_rotation_right_ear = -99;
 
 
 
@@ -68,26 +41,27 @@ void setup() {
 }
 
 void loop() {
-  // Check if the slide switch is enabled (on +) and if not then just exit out
-  // and run the loop again.  This lets you turn on/off the mouse movement with
-  // the slide switch.
-  if (!CircuitPlayground.slideSwitch()) {
-    return;
+
+
+  // Grab x, y acceleration values (in m/s^2).
+  float x_vector = CircuitPlayground.motionX();
+  float y_vector = CircuitPlayground.motionY();
+
+  if ( abs(last_accel_reading_x - x_vector) > G_BOUNCE_THRESHOLD ){
+    last_accel_reading_x = x_vector;
+    angle = floor(90+( 4* x_vector));
+    rotate_left_ear_degrees(angle);
+    angle = floor(90+(-4 * x_vector));
+    rotate_right_ear_degrees(angle);
   }
 
 
+  float last_accel_reading_x = 0;
+  float last_accel_reading_y = 0;
+  int current_rotation_left_ear  = -99;
+  int current_rotation_right_ear = -99;
 
 
-
-  // Grab initial left & right button states to later check if they are pressed
-  // or released.  Do this early in the loop so other processing can take some
-  // time and the button state change can be detected.
-//  boolean left_first = CircuitPlayground.leftButton();
-//  boolean right_first = CircuitPlayground.rightButton();
-
-  // Grab x, y acceleration values (in m/s^2).
-  float x = CircuitPlayground.motionX();
-  float y = CircuitPlayground.motionY();
   /*
   // Use the magnitude of acceleration to interpolate the mouse velocity.
   float x_mag = abs(x);
@@ -108,15 +82,25 @@ void loop() {
 angle=90+x_mouse*2;
 */
 // Serial.println(x);
-angle = floor(90+(4*x));
-  servoLeft.write(angle);
-  angle = floor(90-(4*x));
-    servoRight.write(angle);
 
 
 
-  // Small delay to wait for button state changes and slow down processing a bit.
+  // Small delay
   delay(20);
 
 
+}
+
+void rotate_left_ear_degrees(int dest_rotation){
+  // servoLeft is a global
+  dest_rotation = min(dest_rotation, 180);
+  dest_rotation = max(0, dest_rotation);
+  servoLeft.write(dest_rotation);
+}
+
+void rotate_right_ear_degrees(int dest_rotation){
+  // servoRight is a global
+  dest_rotation = min(dest_rotation, 180);
+  dest_rotation = max(0, dest_rotation);
+  servoRight.write(dest_rotation);
 }
